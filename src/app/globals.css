@@ -1,0 +1,59 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: "Inter", "Instrument Sans", system-ui, sans-serif;
+  --font-display: "Syne", var(--font-sans);
+  --font-mono: "DM Mono", "SFMono-Regular", Consolas, monospace;
+  --background: 216 35% 4%;
+  --foreground: 210 24% 93%;
+  --card: 216 31% 7%;
+  --card-foreground: 210 24% 93%;
+  --popover: 216 31% 7%;
+  --popover-foreground: 210 24% 93%;
+  --primary: 191 100% 50%;
+  --primary-foreground: 215 35% 6%;
+  --secondary: 215 31% 11%;
+  --secondary-foreground: 210 24% 93%;
+  --muted: 216 25% 13%;
+  --muted-foreground: 213 18% 48%;
+  --accent: 215 31% 14%;
+  --accent-foreground: 210 24% 93%;
+  --destructive: 350 100% 65%;
+  --destructive-foreground: 210 24% 93%;
+  --border: 214 22% 17%;
+  --input: 214 22% 17%;
+  --ring: 191 100% 50%;
+  --radius: 0.75rem;
+}
+
+* {
+  @apply border-border;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  @apply min-h-screen bg-background text-foreground antialiased;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: hsl(var(--border));
+}
+
+.trading-surface {
+  @apply border border-white/10 bg-card/95 shadow-glow backdrop-blur;
+}
