@@ -6,15 +6,22 @@ import {
   BarChart3,
   Bell,
   BriefcaseBusiness,
+  BadgeCheck,
   CircleDollarSign,
+  FileText,
+  History,
   LayoutDashboard,
   LogOut,
   Menu,
   PlugZap,
+  Scale,
   Search,
   ShieldCheck,
+  UserCheck,
   UserPlus,
-  Users
+  Users,
+  WalletCards,
+  BookOpenCheck
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
@@ -53,7 +60,11 @@ const navSections: NavSection[] = [
       { label: "All Clients", icon: Users, href: "/clients", badge: "847", badgeTone: "green" },
       { label: "Leads", icon: UserPlus, href: "/leads", badge: "23" },
       { label: "Onboarding", icon: Activity, href: "/onboarding" },
-      { label: "KYC Queue", icon: ShieldCheck, href: "/kyc", badge: "11" }
+      { label: "KYC Queue", icon: ShieldCheck, href: "/kyc", badge: "11" },
+      { label: "KYC Reviews", icon: UserCheck, href: "/kyc/reviews" },
+      { label: "AML Screening", icon: Scale, href: "/kyc/screening" },
+      { label: "Documents", icon: FileText, href: "/kyc/documents" },
+      { label: "KYC Audit", icon: History, href: "/kyc/audit" }
     ]
   },
   {
@@ -67,9 +78,11 @@ const navSections: NavSection[] = [
   {
     label: "Finance",
     items: [
+      { label: "Finance Ops", icon: WalletCards, href: "/finance" },
       { label: "Deposits", icon: CircleDollarSign, href: "/finance/deposits" },
       { label: "Withdrawals", icon: CircleDollarSign, href: "/finance/withdrawals", badge: "5" },
-      { label: "Commissions", icon: BarChart3, href: "/finance/commissions" }
+      { label: "Approvals", icon: BadgeCheck, href: "/finance/approvals" },
+      { label: "Ledger", icon: BookOpenCheck, href: "/finance/ledger" }
     ]
   }
 ];
@@ -181,30 +194,33 @@ function SidebarContent() {
               {section.label}
             </div>
             <div className="space-y-1">
-              {section.items.map((item) => (
-                <Link
-                  key={item.label}
-                  href={item.href as never}
-                  className={cn(
-                    "flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm text-muted-foreground transition hover:bg-secondary hover:text-foreground",
-                    (pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href))) &&
-                      "bg-primary/10 text-primary"
-                  )}
-                >
-                  <item.icon className="h-4 w-4" />
-                  <span className="min-w-0 flex-1 truncate">{item.label}</span>
-                  {item.badge ? (
-                    <span
-                      className={cn(
-                        "rounded-full bg-trading-red px-2 py-0.5 text-[10px] font-semibold text-white",
-                        item.badgeTone === "green" && "bg-trading-green text-black"
-                      )}
-                    >
-                      {item.badge}
-                    </span>
-                  ) : null}
-                </Link>
-              ))}
+              {section.items.map((item) => {
+                const active = pathname === item.href || (item.href !== "/" && pathname.startsWith(`${item.href}/`));
+
+                return (
+                  <Link
+                    key={item.label}
+                    href={item.href as never}
+                    className={cn(
+                      "flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm text-muted-foreground transition hover:bg-secondary hover:text-foreground",
+                      active && "bg-primary/10 text-primary"
+                    )}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                    {item.badge ? (
+                      <span
+                        className={cn(
+                          "rounded-full bg-trading-red px-2 py-0.5 text-[10px] font-semibold text-white",
+                          item.badgeTone === "green" && "bg-trading-green text-black"
+                        )}
+                      >
+                        {item.badge}
+                      </span>
+                    ) : null}
+                  </Link>
+                );
+              })}
             </div>
           </div>
         ))}

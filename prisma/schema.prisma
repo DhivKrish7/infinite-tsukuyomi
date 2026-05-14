@@ -17,9 +17,60 @@ enum ClientStatus {
 enum KycStatus {
   NOT_STARTED
   PENDING
+  IN_REVIEW
   VERIFIED
   FAILED
   FLAGGED
+}
+
+enum KycDocumentType {
+  PASSPORT
+  NATIONAL_ID
+  DRIVER_LICENSE
+  PROOF_OF_ADDRESS
+  BANK_STATEMENT
+  SOURCE_OF_FUNDS
+  SELFIE
+  OTHER
+}
+
+enum KycDocumentStatus {
+  UPLOADED
+  PROCESSING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  NEEDS_RESUBMISSION
+}
+
+enum ComplianceReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  ESCALATED
+  INFORMATION_REQUESTED
+}
+
+enum SanctionsScreeningStatus {
+  QUEUED
+  CLEAR
+  POSSIBLE_MATCH
+  CONFIRMED_MATCH
+  ERROR
+}
+
+enum ScreeningProviderStatus {
+  DISCONNECTED
+  CONNECTED
+  DEGRADED
+  SUSPENDED
+  ERROR
+}
+
+enum ComplianceNoteVisibility {
+  INTERNAL
+  AUDIT
+  ESCALATION
 }
 
 enum RiskLevel {
@@ -39,10 +90,76 @@ enum TransactionType {
 
 enum TransactionStatus {
   PENDING
+  APPROVED
   COMPLETED
   FAILED
   REJECTED
   CANCELLED
+}
+
+enum WalletStatus {
+  ACTIVE
+  FROZEN
+  CLOSED
+}
+
+enum WalletType {
+  CLIENT
+  OPERATING
+  FEE
+  SETTLEMENT
+}
+
+enum LedgerEntryDirection {
+  DEBIT
+  CREDIT
+}
+
+enum FinanceApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  ESCALATED
+}
+
+enum FinanceApprovalStep {
+  REQUEST_REVIEW
+  RISK_REVIEW
+  FINANCE_REVIEW
+  ADMIN_APPROVAL
+  RELEASED
+}
+
+enum PaymentGatewayStatus {
+  DISCONNECTED
+  CONNECTED
+  DEGRADED
+  SUSPENDED
+  ERROR
+}
+
+enum FinanceFeeType {
+  PROCESSING
+  NETWORK
+  CHARGEBACK
+  FX
+  WITHDRAWAL
+  DEPOSIT
+  INTERNAL
+}
+
+enum SuspiciousFlagStatus {
+  OPEN
+  IN_REVIEW
+  CLEARED
+  ESCALATED
+}
+
+enum SuspiciousFlagSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
 }
 
 enum LeadStatus {
@@ -136,6 +253,20 @@ model Tenant {
   platforms TradingPlatform[]
   brokerConnections BrokerConnection[]
   brokerSyncRuns     BrokerSyncRun[]
+  wallets            Wallet[]
+  paymentGateways    PaymentGatewayConnection[]
+  financeApprovals   FinanceApproval[]
+  ledgerEntries      LedgerEntry[]
+  financeFees        FinanceFee[]
+  suspiciousFlags    SuspiciousTransactionFlag[]
+  gatewayEvents      PaymentGatewayEvent[]
+  kycCases           KycCase[]
+  kycDocuments       KycDocument[]
+  complianceReviews  ComplianceReview[]
+  sanctionsScreenings SanctionsScreening[]
+  screeningProviders ScreeningProviderConnection[]
+  complianceNotes    ComplianceNote[]
+  complianceAuditEvents ComplianceAuditEvent[]
 }
 
 model User {
@@ -163,6 +294,15 @@ model User {
   communications      CommunicationLog[]   @relation("CommunicationCreatedBy")
   createdTasks        TaskReminder[]       @relation("TaskCreatedBy")
   assignedTasks       TaskReminder[]       @relation("TaskAssignedTo")
+  requestedFinanceTransactions Transaction[] @relation("FinanceTransactionRequestedBy")
+  processedFinanceTransactions Transaction[] @relation("FinanceTransactionProcessedBy")
+  financeApprovals    FinanceApproval[]    @relation("FinanceApprovalReviewer")
+  reviewedSuspiciousFlags SuspiciousTransactionFlag[] @relation("SuspiciousFlagReviewer")
+  assignedKycCases    KycCase[]            @relation("KycCaseAssignedReviewer")
+  reviewedKycDocuments KycDocument[]       @relation("KycDocumentReviewer")
+  complianceReviews   ComplianceReview[]   @relation("ComplianceReviewReviewer")
+  authoredComplianceNotes ComplianceNote[]  @relation("ComplianceNoteAuthor")
+  complianceAuditEvents ComplianceAuditEvent[] @relation("ComplianceAuditActor")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -266,7 +406,11 @@ model Client {
   convertedLead  Lead?              @relation("ConvertedLead", fields: [convertedLeadId], references: [id])
   accounts       TradingAccount[]
   transactions   Transaction[]
+  wallets        Wallet[]
   kycCases       KycCase[]
+  kycDocuments   KycDocument[]
+  sanctionsScreenings SanctionsScreening[]
+  complianceNotes ComplianceNote[]
   tags           ClientTag[]
   notes          ClientNote[]
   communications CommunicationLog[]
@@ -566,34 +710,364 @@ model Transaction {
   id          String            @id @default(uuid())
   tenantId    String
   clientId    String
+  walletId    String?
+  gatewayConnectionId String?
+  requestedById String?
+  processedById String?
   type        TransactionType
   status      TransactionStatus @default(PENDING)
   amount      Decimal           @db.Decimal(18, 2)
+  feeAmount   Decimal           @default(0) @db.Decimal(18, 2)
+  netAmount   Decimal           @default(0) @db.Decimal(18, 2)
   currency    String            @default("USD")
   method      String?
   reference   String?
+  gatewayReference String?
+  riskScore   Int               @default(0)
+  suspicious  Boolean           @default(false)
+  riskReason  String?
   requestedAt DateTime          @default(now())
   processedAt DateTime?
 
-  client Client @relation(fields: [clientId], references: [id])
+  client            Client                    @relation(fields: [clientId], references: [id])
+  wallet            Wallet?                   @relation(fields: [walletId], references: [id])
+  gatewayConnection PaymentGatewayConnection? @relation(fields: [gatewayConnectionId], references: [id])
+  requestedBy       User?                     @relation("FinanceTransactionRequestedBy", fields: [requestedById], references: [id])
+  processedBy       User?                     @relation("FinanceTransactionProcessedBy", fields: [processedById], references: [id])
+  approvals         FinanceApproval[]
+  ledgerEntries     LedgerEntry[]
+  fees              FinanceFee[]
+  suspiciousFlags   SuspiciousTransactionFlag[]
 
   @@index([tenantId, status])
   @@index([clientId, requestedAt])
+  @@index([walletId, requestedAt])
+  @@index([gatewayConnectionId])
+  @@index([tenantId, suspicious, status])
+}
+
+model Wallet {
+  id                 String       @id @default(uuid())
+  tenantId           String
+  clientId           String?
+  type               WalletType   @default(CLIENT)
+  status             WalletStatus @default(ACTIVE)
+  currency           String       @default("USD")
+  ledgerBalance      Decimal      @default(0) @db.Decimal(18, 2)
+  availableBalance   Decimal      @default(0) @db.Decimal(18, 2)
+  holdBalance        Decimal      @default(0) @db.Decimal(18, 2)
+  lifetimeDeposits   Decimal      @default(0) @db.Decimal(18, 2)
+  lifetimeWithdrawals Decimal     @default(0) @db.Decimal(18, 2)
+  providerReference  String?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  client        Client?        @relation(fields: [clientId], references: [id])
+  transactions  Transaction[]
+  ledgerEntries LedgerEntry[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, type, currency])
+  @@index([clientId])
+}
+
+model LedgerEntry {
+  id             String               @id @default(uuid())
+  tenantId       String
+  walletId       String
+  transactionId  String?
+  direction      LedgerEntryDirection
+  entryType      String
+  amount         Decimal              @db.Decimal(18, 2)
+  currency       String               @default("USD")
+  balanceAfter   Decimal              @db.Decimal(18, 2)
+  reference      String?
+  occurredAt     DateTime             @default(now())
+  createdAt      DateTime             @default(now())
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id])
+  wallet      Wallet       @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  transaction Transaction? @relation(fields: [transactionId], references: [id])
+
+  @@index([tenantId, occurredAt])
+  @@index([walletId, occurredAt])
+  @@index([transactionId])
+}
+
+model FinanceApproval {
+  id            String                @id @default(uuid())
+  tenantId      String
+  transactionId String
+  reviewerId    String?
+  step          FinanceApprovalStep
+  status        FinanceApprovalStatus @default(PENDING)
+  comment       String?
+  decidedAt     DateTime?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id])
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  reviewer    User?       @relation("FinanceApprovalReviewer", fields: [reviewerId], references: [id])
+
+  @@index([tenantId, status, step])
+  @@index([transactionId])
+  @@index([reviewerId])
+}
+
+model FinanceFee {
+  id            String         @id @default(uuid())
+  tenantId      String
+  transactionId String?
+  type          FinanceFeeType
+  name          String
+  amount        Decimal        @db.Decimal(18, 2)
+  currency      String         @default("USD")
+  ruleSnapshot  Json?
+  createdAt     DateTime       @default(now())
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id])
+  transaction Transaction? @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, type, createdAt])
+  @@index([transactionId])
+}
+
+model PaymentGatewayConnection {
+  id                 String               @id @default(uuid())
+  tenantId           String
+  key                String
+  displayName        String
+  provider           String
+  status             PaymentGatewayStatus @default(DISCONNECTED)
+  settlementCurrency String               @default("USD")
+  credentials        Json?
+  settings           Json?
+  lastHealthCheckAt  DateTime?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  tenant       Tenant                @relation(fields: [tenantId], references: [id])
+  transactions Transaction[]
+  events       PaymentGatewayEvent[]
+
+  @@unique([tenantId, key])
+  @@index([tenantId, status])
+}
+
+model PaymentGatewayEvent {
+  id                  String   @id @default(uuid())
+  tenantId            String
+  gatewayConnectionId String
+  externalId          String?
+  eventType           String
+  payload             Json
+  processedAt         DateTime?
+  createdAt           DateTime @default(now())
+
+  tenant            Tenant                   @relation(fields: [tenantId], references: [id])
+  gatewayConnection PaymentGatewayConnection @relation(fields: [gatewayConnectionId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@index([gatewayConnectionId, eventType])
+  @@index([externalId])
+}
+
+model SuspiciousTransactionFlag {
+  id            String                 @id @default(uuid())
+  tenantId      String
+  transactionId String
+  reviewedById  String?
+  status        SuspiciousFlagStatus   @default(OPEN)
+  severity      SuspiciousFlagSeverity @default(MEDIUM)
+  ruleCode      String
+  reason        String
+  reviewedAt    DateTime?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id])
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  reviewedBy  User?       @relation("SuspiciousFlagReviewer", fields: [reviewedById], references: [id])
+
+  @@index([tenantId, status, severity])
+  @@index([transactionId])
+  @@index([reviewedById])
 }
 
 model KycCase {
-  id         String    @id @default(uuid())
-  clientId   String
-  status     KycStatus @default(PENDING)
-  riskLevel  RiskLevel @default(LOW)
-  reviewerId String?
-  notes      String?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id                 String    @id @default(uuid())
+  tenantId           String
+  clientId           String
+  assignedReviewerId String?
+  status             KycStatus @default(PENDING)
+  riskLevel          RiskLevel @default(LOW)
+  riskScore          Int       @default(0)
+  riskReason         String?
+  workflowStage      String    @default("DOCUMENT_COLLECTION")
+  submittedAt        DateTime?
+  decidedAt          DateTime?
+  expiresAt          DateTime?
+  notes              String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
-  client Client @relation(fields: [clientId], references: [id])
+  tenant           Tenant               @relation(fields: [tenantId], references: [id])
+  client           Client               @relation(fields: [clientId], references: [id])
+  assignedReviewer User?                @relation("KycCaseAssignedReviewer", fields: [assignedReviewerId], references: [id])
+  documents        KycDocument[]
+  reviews          ComplianceReview[]
+  screenings       SanctionsScreening[]
+  complianceNotes  ComplianceNote[]
+  auditEvents      ComplianceAuditEvent[]
 
+  @@index([tenantId, status, riskLevel])
+  @@index([tenantId, workflowStage])
   @@index([clientId, status])
+  @@index([assignedReviewerId])
+}
+
+model KycDocument {
+  id              String            @id @default(uuid())
+  tenantId        String
+  clientId        String
+  kycCaseId       String
+  reviewedById    String?
+  type            KycDocumentType
+  status          KycDocumentStatus @default(UPLOADED)
+  fileName        String
+  mimeType        String
+  byteSize        Int
+  storageKey      String
+  checksum        String?
+  rejectionReason String?
+  uploadedAt      DateTime          @default(now())
+  reviewedAt      DateTime?
+  expiresAt       DateTime?
+
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  client     Client   @relation(fields: [clientId], references: [id])
+  kycCase    KycCase  @relation(fields: [kycCaseId], references: [id], onDelete: Cascade)
+  reviewedBy User?    @relation("KycDocumentReviewer", fields: [reviewedById], references: [id])
+
+  @@index([tenantId, status, type])
+  @@index([clientId, uploadedAt])
+  @@index([kycCaseId])
+  @@index([reviewedById])
+}
+
+model ComplianceReview {
+  id            String                 @id @default(uuid())
+  tenantId      String
+  kycCaseId     String
+  reviewerId    String?
+  status        ComplianceReviewStatus @default(PENDING)
+  decisionCode  String?
+  summary       String?
+  checklist     Json?
+  decidedAt     DateTime?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+
+  tenant   Tenant  @relation(fields: [tenantId], references: [id])
+  kycCase  KycCase @relation(fields: [kycCaseId], references: [id], onDelete: Cascade)
+  reviewer User?   @relation("ComplianceReviewReviewer", fields: [reviewerId], references: [id])
+
+  @@index([tenantId, status, createdAt])
+  @@index([kycCaseId])
+  @@index([reviewerId])
+}
+
+model ScreeningProviderConnection {
+  id                String                  @id @default(uuid())
+  tenantId          String
+  key               String
+  displayName       String
+  provider          String
+  status            ScreeningProviderStatus @default(DISCONNECTED)
+  credentials       Json?
+  settings          Json?
+  lastHealthCheckAt DateTime?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+
+  tenant     Tenant               @relation(fields: [tenantId], references: [id])
+  screenings SanctionsScreening[]
+
+  @@unique([tenantId, key])
+  @@index([tenantId, status])
+}
+
+model SanctionsScreening {
+  id                   String                   @id @default(uuid())
+  tenantId             String
+  clientId             String
+  kycCaseId            String
+  providerConnectionId String?
+  status               SanctionsScreeningStatus @default(QUEUED)
+  riskScore            Int                      @default(0)
+  matchCount           Int                      @default(0)
+  providerReference    String?
+  searchProfile        Json?
+  resultPayload        Json?
+  screenedAt           DateTime?
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+
+  tenant             Tenant                       @relation(fields: [tenantId], references: [id])
+  client             Client                       @relation(fields: [clientId], references: [id])
+  kycCase            KycCase                      @relation(fields: [kycCaseId], references: [id], onDelete: Cascade)
+  providerConnection ScreeningProviderConnection? @relation(fields: [providerConnectionId], references: [id])
+
+  @@index([tenantId, status, createdAt])
+  @@index([clientId, createdAt])
+  @@index([kycCaseId])
+  @@index([providerConnectionId])
+}
+
+model ComplianceNote {
+  id         String                   @id @default(uuid())
+  tenantId   String
+  clientId   String
+  kycCaseId  String?
+  authorId   String?
+  visibility ComplianceNoteVisibility @default(INTERNAL)
+  body       String
+  pinned     Boolean                  @default(false)
+  createdAt  DateTime                 @default(now())
+  updatedAt  DateTime                 @updatedAt
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id])
+  client  Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  kycCase KycCase? @relation(fields: [kycCaseId], references: [id], onDelete: Cascade)
+  author  User?    @relation("ComplianceNoteAuthor", fields: [authorId], references: [id])
+
+  @@index([tenantId, createdAt])
+  @@index([clientId, createdAt])
+  @@index([kycCaseId])
+  @@index([authorId])
+}
+
+model ComplianceAuditEvent {
+  id        String   @id @default(uuid())
+  tenantId  String
+  kycCaseId String?
+  actorId   String?
+  action    String
+  entity    String
+  entityId  String?
+  metadata  Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id])
+  kycCase KycCase? @relation(fields: [kycCaseId], references: [id], onDelete: Cascade)
+  actor   User?    @relation("ComplianceAuditActor", fields: [actorId], references: [id])
+
+  @@index([tenantId, createdAt])
+  @@index([kycCaseId, createdAt])
+  @@index([entity, entityId])
 }
 
 model AuditLog {
