@@ -98,6 +98,30 @@ enum TaskPriority {
   URGENT
 }
 
+enum BrokerConnectionStatus {
+  DISCONNECTED
+  CONNECTING
+  CONNECTED
+  DEGRADED
+  SUSPENDED
+  ERROR
+}
+
+enum BrokerSyncType {
+  ACCOUNTS
+  TRADES
+  TRANSACTIONS
+  BALANCES
+}
+
+enum BrokerSyncStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+  PARTIAL
+}
+
 model Tenant {
   id        String   @id @default(uuid())
   name      String
@@ -110,6 +134,8 @@ model Tenant {
   leads     Lead[]
   tags      Tag[]
   platforms TradingPlatform[]
+  brokerConnections BrokerConnection[]
+  brokerSyncRuns     BrokerSyncRun[]
 }
 
 model User {
@@ -423,9 +449,61 @@ model TradingPlatform {
   tenant   Tenant           @relation(fields: [tenantId], references: [id])
   clients  Client[]
   accounts TradingAccount[]
+  brokerConnections BrokerConnection[]
 
   @@unique([tenantId, name])
   @@index([tenantId, isConnected])
+}
+
+model BrokerConnection {
+  id              String                 @id @default(uuid())
+  tenantId        String
+  platformId      String
+  adapterKey      String
+  displayName     String
+  status          BrokerConnectionStatus @default(DISCONNECTED)
+  credentials     Json?
+  settings        Json?
+  accountCursor   String?
+  tradeCursor     String?
+  transactionCursor String?
+  lastHeartbeatAt DateTime?
+  lastAccountSyncAt DateTime?
+  lastTradeSyncAt DateTime?
+  lastTransactionSyncAt DateTime?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  tenant   Tenant          @relation(fields: [tenantId], references: [id])
+  platform TradingPlatform @relation(fields: [platformId], references: [id], onDelete: Cascade)
+  syncRuns BrokerSyncRun[]
+
+  @@unique([tenantId, adapterKey, displayName])
+  @@index([tenantId, status])
+  @@index([platformId])
+}
+
+model BrokerSyncRun {
+  id           String           @id @default(uuid())
+  tenantId     String
+  connectionId String
+  type         BrokerSyncType
+  status       BrokerSyncStatus @default(QUEUED)
+  cursorBefore String?
+  cursorAfter  String?
+  recordsRead  Int              @default(0)
+  recordsUpserted Int           @default(0)
+  error        String?
+  metadata     Json?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime         @default(now())
+
+  tenant     Tenant           @relation(fields: [tenantId], references: [id])
+  connection BrokerConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, type, createdAt])
+  @@index([connectionId, type, createdAt])
 }
 
 model TradingAccount {
@@ -443,9 +521,26 @@ model TradingAccount {
   client   Client          @relation(fields: [clientId], references: [id])
   platform TradingPlatform @relation(fields: [platformId], references: [id])
   trades   Trade[]
+  balanceSnapshots AccountBalanceSnapshot[]
 
   @@unique([platformId, login])
   @@index([clientId])
+}
+
+model AccountBalanceSnapshot {
+  id        String   @id @default(uuid())
+  accountId String
+  balance   Decimal  @db.Decimal(18, 2)
+  equity    Decimal  @db.Decimal(18, 2)
+  margin    Decimal  @db.Decimal(18, 2)
+  freeMargin Decimal @default(0) @db.Decimal(18, 2)
+  credit    Decimal  @default(0) @db.Decimal(18, 2)
+  currency  String   @default("USD")
+  capturedAt DateTime @default(now())
+
+  account TradingAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, capturedAt])
 }
 
 model Trade {
