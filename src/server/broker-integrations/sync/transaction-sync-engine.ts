@@ -15,7 +15,9 @@ export class TransactionSyncEngine {
     });
 
     try {
-      const page = await adapter.fetchTransactions(context, cursorBefore);
+      const page = adapter.syncTransactions
+        ? await adapter.syncTransactions(context, cursorBefore)
+        : { items: [], nextCursor: cursorBefore };
       let upserted = 0;
 
       for (const transaction of page.items) {

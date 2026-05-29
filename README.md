@@ -54,12 +54,20 @@ Copy `.env.example` to `.env.local` for local database and service secrets.
 - Access tokens are signed JWTs stored in an HTTP-only cookie.
 - Refresh tokens are opaque, hashed in PostgreSQL, and rotated on refresh.
 - Login, logout, current session, forgot password, and reset password endpoints live under `/api/auth`.
-- Middleware protects application routes and applies RBAC route policies for admin, audit, KYC, finance, and risk areas.
+- Middleware protects application routes and applies RBAC permission policies for CRM, analytics, KYC, finance, platform, and API areas.
 - Auth events are written into `AuditLog` for successful login, failed login, blocked login, logout, refresh rotation, refresh reuse detection, and password resets.
 
-Seed the first tenant, roles, permissions, and super admin after configuring `DATABASE_URL`:
+Seed the default tenant, RBAC permissions, demo roles, and local demo users after configuring `DATABASE_URL`:
 
 ```bash
 npm run prisma:migrate
 npm run db:seed
+```
+
+Local demo sign-in uses tenant `default`:
+
+```txt
+Admin: admin@nexuscrm.local / Password123!
+Manager: manager@nexuscrm.local / Password123!
+Support: support@nexuscrm.local / Password123!
 ```

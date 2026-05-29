@@ -1,11 +1,13 @@
-export type { BrokerAdapter, BrokerAdapterMetadata } from "./core/adapter";
+export type { BaseBrokerAdapter, BrokerAdapter, BrokerAdapterMetadata } from "./core/adapter";
 export type {
   BrokerAccountSnapshot,
+  BrokerConnectionSession,
   BrokerConnectionContext,
   BrokerRealtimeEvent,
   BrokerTradeSnapshot,
   BrokerTransactionSnapshot
 } from "./core/domain";
+export { brokerAdapterLoader, BrokerAdapterLoader, brokerAdapterManifest } from "./core/adapter-loader";
 export { brokerAdapterRegistry, BrokerAdapterRegistry } from "./core/registry";
 export { brokerEventBus, BrokerIntegrationEventBus } from "./core/events";
 export { brokerRealtimeGateway, BrokerRealtimeGateway } from "./core/websocket-gateway";

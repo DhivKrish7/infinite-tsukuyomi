@@ -23,7 +23,7 @@ export class BrokerSyncOrchestrator {
       }
     });
 
-    const registry = registerBrokerAdapters();
+    const registry = await registerBrokerAdapters();
     const adapter = registry.get(connection.adapterKey);
     const context = toBrokerConnectionContext(connection);
     const types = input.types ?? [BrokerSyncType.ACCOUNTS, BrokerSyncType.TRADES, BrokerSyncType.TRANSACTIONS];
@@ -31,7 +31,7 @@ export class BrokerSyncOrchestrator {
 
     for (const type of types) {
       if (type === BrokerSyncType.ACCOUNTS || type === BrokerSyncType.BALANCES) {
-        results[type] = await this.accountSync.sync(adapter, context);
+        results[type] = await this.accountSync.sync(adapter, context, type);
       }
 
       if (type === BrokerSyncType.TRADES) {

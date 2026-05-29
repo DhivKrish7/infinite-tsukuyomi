@@ -6,17 +6,24 @@ import { brokerEventBus } from "../core/events";
 import { completeSyncRun, startSyncRun } from "./sync-run-recorder";
 
 export class AccountSyncEngine {
-  async sync(adapter: BrokerAdapter, context: BrokerConnectionContext) {
-    const cursorBefore = context.cursors[BrokerSyncType.ACCOUNTS] ?? null;
+  async sync(
+    adapter: BrokerAdapter,
+    context: BrokerConnectionContext,
+    syncType: BrokerSyncType = BrokerSyncType.ACCOUNTS
+  ) {
+    const cursorBefore = syncType === BrokerSyncType.ACCOUNTS ? (context.cursors[BrokerSyncType.ACCOUNTS] ?? null) : null;
     const run = await startSyncRun({
       tenantId: context.tenantId,
       connectionId: context.connectionId,
-      type: BrokerSyncType.ACCOUNTS,
+      type: syncType,
       cursorBefore
     });
 
     try {
-      const page = await adapter.fetchAccounts(context, cursorBefore);
+      const page =
+        syncType === BrokerSyncType.BALANCES
+          ? await adapter.syncBalances(context, cursorBefore)
+          : await adapter.syncClients(context, cursorBefore);
       let upserted = 0;
 
       for (const account of page.items) {
@@ -84,6 +91,7 @@ export class AccountSyncEngine {
 
         await brokerEventBus.publish({
           type: "balance.updated",
+          tenantId: context.tenantId,
           connectionId: context.connectionId,
           platformId: context.platformId,
           account
@@ -95,7 +103,7 @@ export class AccountSyncEngine {
       await prisma.brokerConnection.update({
         where: { id: context.connectionId },
         data: {
-          accountCursor: page.nextCursor,
+          accountCursor: syncType === BrokerSyncType.ACCOUNTS ? page.nextCursor : context.cursors[BrokerSyncType.ACCOUNTS],
           lastAccountSyncAt: new Date()
         }
       });

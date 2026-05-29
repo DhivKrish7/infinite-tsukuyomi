@@ -3,7 +3,7 @@ import type { ActivityEvent, Client, Platform } from "./types";
 export const platforms: Platform[] = [
   {
     id: "nebulafx",
-    name: "NebulFX",
+    name: "NebulaFX",
     type: "MT5 + MT4",
     color: "#818cf8",
     clients: 614,
@@ -13,7 +13,7 @@ export const platforms: Platform[] = [
   },
   {
     id: "squidfx",
-    name: "SquidFX",
+    name: "SquidMarkets",
     type: "cTrader",
     color: "#22d3a5",
     clients: 233,
@@ -37,11 +37,12 @@ export const clients: Client[] = [
   {
     id: "NX-10482",
     name: "Marcus Reid",
-    email: "marcus@email.com",
+    email: "marcus.reid@nexusdemo.local",
     platformId: "nebulafx",
     balance: "$84,200",
     pnl: "+$4,120",
     pnlDirection: "positive",
+    presence: "online",
     status: "active",
     kyc: "verified",
     risk: "low"
@@ -49,11 +50,12 @@ export const clients: Client[] = [
   {
     id: "SQ-00214",
     name: "Priya Kapoor",
-    email: "priya@email.com",
+    email: "priya.kapoor@nexusdemo.local",
     platformId: "squidfx",
     balance: "$32,000",
     pnl: "+$1,830",
     pnlDirection: "positive",
+    presence: "online",
     status: "active",
     kyc: "verified",
     risk: "medium"
@@ -61,11 +63,12 @@ export const clients: Client[] = [
   {
     id: "NX-09921",
     name: "Liam Torres",
-    email: "liam@email.com",
+    email: "liam.torres@nexusdemo.local",
     platformId: "nebulafx",
     balance: "$12,400",
     pnl: "-$560",
     pnlDirection: "negative",
+    presence: "offline",
     status: "active",
     kyc: "pending",
     risk: "high"
@@ -73,11 +76,12 @@ export const clients: Client[] = [
   {
     id: "SQ-00177",
     name: "Chloe Martin",
-    email: "chloe@email.com",
+    email: "chloe.martin@nexusdemo.local",
     platformId: "squidfx",
     balance: "$14,000",
     pnl: "+$700",
     pnlDirection: "positive",
+    presence: "offline",
     status: "suspended",
     kyc: "failed",
     risk: "high"
@@ -95,7 +99,7 @@ export const activities: ActivityEvent[] = [
   {
     id: "act-2",
     type: "lead",
-    message: "New lead signed up via NebulFX landing page",
+    message: "New lead signed up via NebulaFX landing page",
     time: "5 min ago",
     platformId: "nebulafx"
   },
@@ -123,7 +127,7 @@ export const activities: ActivityEvent[] = [
   {
     id: "act-6",
     type: "sync",
-    message: "SquidFX data sync completed",
+    message: "SquidMarkets data sync completed",
     time: "30 min ago",
     platformId: "squidfx"
   }

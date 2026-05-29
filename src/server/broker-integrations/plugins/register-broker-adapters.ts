@@ -1,15 +1,5 @@
-import { mockNebulafxAdapter } from "../adapters/mock-nebulafx/adapter";
-import { mockSquidfxAdapter } from "../adapters/mock-squidfx/adapter";
-import { brokerAdapterRegistry } from "../core/registry";
+import { brokerAdapterLoader } from "../core/adapter-loader";
 
-let registered = false;
-
-export function registerBrokerAdapters() {
-  if (registered) return brokerAdapterRegistry;
-
-  brokerAdapterRegistry.register(mockNebulafxAdapter);
-  brokerAdapterRegistry.register(mockSquidfxAdapter);
-  registered = true;
-
-  return brokerAdapterRegistry;
+export async function registerBrokerAdapters() {
+  return brokerAdapterLoader.loadAvailable();
 }

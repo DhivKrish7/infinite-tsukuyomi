@@ -30,7 +30,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useDashboardStore } from "@/stores/dashboard-store";
-import { useAuthStore } from "@/stores/auth-store";
+import { useAuthStore, type AuthUser } from "@/stores/auth-store";
+import { PERMISSION } from "@/lib/auth/rbac";
 import { cn } from "@/lib/utils";
 
 type NavItem = {
@@ -39,6 +40,7 @@ type NavItem = {
   href: string;
   badge?: string;
   badgeTone?: "green" | "red";
+  permissions?: string[];
 };
 
 type NavSection = {
@@ -51,52 +53,86 @@ const navSections: NavSection[] = [
     label: "Overview",
     items: [
       { label: "Dashboard", icon: LayoutDashboard, href: "/" },
-      { label: "Analytics", icon: BarChart3, href: "/analytics" }
+      { label: "Analytics", icon: BarChart3, href: "/analytics", permissions: [PERMISSION.ANALYTICS_READ] }
     ]
   },
   {
     label: "Clients",
     items: [
-      { label: "All Clients", icon: Users, href: "/clients", badge: "847", badgeTone: "green" },
-      { label: "Leads", icon: UserPlus, href: "/leads", badge: "23" },
-      { label: "Onboarding", icon: Activity, href: "/onboarding" },
-      { label: "KYC Queue", icon: ShieldCheck, href: "/kyc", badge: "11" },
-      { label: "KYC Reviews", icon: UserCheck, href: "/kyc/reviews" },
-      { label: "AML Screening", icon: Scale, href: "/kyc/screening" },
-      { label: "Documents", icon: FileText, href: "/kyc/documents" },
-      { label: "KYC Audit", icon: History, href: "/kyc/audit" }
+      {
+        label: "All Clients",
+        icon: Users,
+        href: "/clients",
+        badge: "847",
+        badgeTone: "green",
+        permissions: [PERMISSION.CLIENTS_READ]
+      },
+      { label: "Leads", icon: UserPlus, href: "/leads", badge: "23", permissions: [PERMISSION.LEADS_READ] },
+      {
+        label: "Onboarding",
+        icon: Activity,
+        href: "/onboarding",
+        permissions: [PERMISSION.LEADS_READ, PERMISSION.CLIENTS_READ]
+      },
+      { label: "KYC Queue", icon: ShieldCheck, href: "/kyc", badge: "11", permissions: [PERMISSION.KYC_REVIEW] },
+      { label: "KYC Reviews", icon: UserCheck, href: "/kyc/reviews", permissions: [PERMISSION.KYC_REVIEW] },
+      { label: "AML Screening", icon: Scale, href: "/kyc/screening", permissions: [PERMISSION.KYC_REVIEW] },
+      { label: "Documents", icon: FileText, href: "/kyc/documents", permissions: [PERMISSION.KYC_REVIEW] },
+      { label: "KYC Audit", icon: History, href: "/kyc/audit", permissions: [PERMISSION.KYC_REVIEW] }
     ]
   },
   {
     label: "Trading",
     items: [
-      { label: "Accounts", icon: BriefcaseBusiness, href: "/trading/accounts" },
-      { label: "Positions", icon: Activity, href: "/trading/positions" },
-      { label: "Platforms", icon: PlugZap, href: "/platforms" }
+      {
+        label: "Accounts",
+        icon: BriefcaseBusiness,
+        href: "/trading/accounts",
+        permissions: [PERMISSION.PLATFORMS_MANAGE]
+      },
+      { label: "Positions", icon: Activity, href: "/trading/positions", permissions: [PERMISSION.PLATFORMS_MANAGE] },
+      { label: "Platforms", icon: PlugZap, href: "/platforms", permissions: [PERMISSION.PLATFORMS_MANAGE] }
     ]
   },
   {
     label: "Finance",
     items: [
-      { label: "Finance Ops", icon: WalletCards, href: "/finance" },
-      { label: "Deposits", icon: CircleDollarSign, href: "/finance/deposits" },
-      { label: "Withdrawals", icon: CircleDollarSign, href: "/finance/withdrawals", badge: "5" },
-      { label: "Approvals", icon: BadgeCheck, href: "/finance/approvals" },
-      { label: "Ledger", icon: BookOpenCheck, href: "/finance/ledger" }
+      { label: "Finance Ops", icon: WalletCards, href: "/finance", permissions: [PERMISSION.FINANCE_READ] },
+      { label: "Deposits", icon: CircleDollarSign, href: "/finance/deposits", permissions: [PERMISSION.FINANCE_READ] },
+      {
+        label: "Withdrawals",
+        icon: CircleDollarSign,
+        href: "/finance/withdrawals",
+        badge: "5",
+        permissions: [PERMISSION.WITHDRAWALS_APPROVE]
+      },
+      { label: "Approvals", icon: BadgeCheck, href: "/finance/approvals", permissions: [PERMISSION.WITHDRAWALS_APPROVE] },
+      { label: "Ledger", icon: BookOpenCheck, href: "/finance/ledger", permissions: [PERMISSION.FINANCE_READ] }
     ]
   }
 ];
 
 const platformPlugins = [
-  { name: "NebulFX", meta: "614 clients · Live", color: "#818cf8", connected: true },
-  { name: "SquidFX", meta: "233 clients · Live", color: "#22d3a5", connected: true },
+  { name: "NebulaFX", meta: "614 clients · Live", color: "#818cf8", connected: true },
+  { name: "SquidMarkets", meta: "233 clients · Live", color: "#22d3a5", connected: true },
   { name: "TradeXo", meta: "API key required", color: "#6b7a99", connected: false }
 ];
+
+function canUsePermission(user: AuthUser | null, permissions: string | string[]) {
+  const permissionList = Array.isArray(permissions) ? permissions : [permissions];
+
+  return Boolean(
+    user &&
+      (user.roles.includes("SUPER_ADMIN") ||
+        permissionList.some((permission) => user.permissions.includes(permission)))
+  );
+}
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { sidebarOpen, setSidebarOpen } = useDashboardStore();
   const { user, setUser } = useAuthStore();
+  const isDemoEnvironment = process.env.NODE_ENV !== "production";
 
   async function logout() {
     await fetch("/api/auth/logout", {
@@ -112,11 +148,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
       <div className="flex min-h-screen overflow-hidden bg-background text-foreground">
         <aside className="hidden h-screen w-64 shrink-0 border-r border-white/10 bg-card lg:block">
-          <SidebarContent />
+          <SidebarContent user={user} />
         </aside>
 
         <SheetContent>
-          <SidebarContent />
+          <SidebarContent user={user} />
         </SheetContent>
 
       <main className="flex min-w-0 flex-1 flex-col">
@@ -141,14 +177,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             />
           </div>
 
-          <Button variant="outline" size="sm" className="hidden sm:inline-flex">
-            <PlugZap className="h-4 w-4" />
-            Platforms
-          </Button>
-          <Button size="sm" className="hidden sm:inline-flex">
-            <UserPlus className="h-4 w-4" />
-            New Client
-          </Button>
+          {canUsePermission(user, PERMISSION.PLATFORMS_MANAGE) ? (
+            <Button variant="outline" size="sm" className="hidden sm:inline-flex">
+              <PlugZap className="h-4 w-4" />
+              Platforms
+            </Button>
+          ) : null}
+          {canUsePermission(user, PERMISSION.CLIENTS_WRITE) ? (
+            <Button size="sm" className="hidden sm:inline-flex">
+              <UserPlus className="h-4 w-4" />
+              New Client
+            </Button>
+          ) : null}
           <Button variant="ghost" size="icon" className="relative">
             <Bell className="h-5 w-5" />
             <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-trading-red" />
@@ -166,6 +206,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </Button>
         </header>
 
+        {isDemoEnvironment ? (
+          <div className="border-b border-primary/20 bg-primary/10 px-4 py-2 text-xs text-primary sm:px-6">
+            <span className="font-mono uppercase tracking-[0.18em]">Demo environment</span>
+            <span className="ml-2 text-primary/80">
+              Local seeded accounts are active: admin, manager, and support.
+            </span>
+          </div>
+        ) : null}
+
         <div className="flex-1 overflow-y-auto p-4 sm:p-6">{children}</div>
       </main>
       </div>
@@ -173,8 +222,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-function SidebarContent() {
+function SidebarContent({ user }: { user: AuthUser | null }) {
   const pathname = usePathname();
+  const visibleSections = navSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => !item.permissions || canUsePermission(user, item.permissions))
+    }))
+    .filter((section) => section.items.length > 0);
 
   return (
     <div className="flex h-full flex-col">
@@ -188,7 +243,7 @@ function SidebarContent() {
       </div>
 
       <nav className="space-y-5 px-3 py-5">
-        {navSections.map((section) => (
+        {visibleSections.map((section) => (
           <div key={section.label}>
             <div className="mb-2 px-2 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
               {section.label}
@@ -226,7 +281,8 @@ function SidebarContent() {
         ))}
       </nav>
 
-      <div className="mt-auto border-t border-white/10 p-3">
+      {canUsePermission(user, PERMISSION.PLATFORMS_MANAGE) ? (
+        <div className="mt-auto border-t border-white/10 p-3">
         <div className="mb-2 px-2 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
           Platforms
         </div>
@@ -259,6 +315,7 @@ function SidebarContent() {
           ))}
         </div>
       </div>
+      ) : null}
     </div>
   );
 }

@@ -69,7 +69,7 @@ export const demoAnalyticsOverview: AnalyticsOverview = {
   brokerPerformance: [
     {
       id: "nebulafx",
-      name: "NebulFX",
+      name: "NebulaFX",
       type: "MT5 + MT4",
       clients: 614,
       accounts: 720,
@@ -80,7 +80,7 @@ export const demoAnalyticsOverview: AnalyticsOverview = {
     },
     {
       id: "squidfx",
-      name: "SquidFX",
+      name: "SquidMarkets",
       type: "cTrader",
       clients: 233,
       accounts: 312,

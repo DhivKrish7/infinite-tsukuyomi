@@ -38,10 +38,30 @@ const statDefinitions = [
   }
 ];
 
-export function StatsGrid({ clients, platforms }: { clients: Client[]; platforms: Platform[] }) {
+export function StatsGrid({
+  clients,
+  platforms,
+  openPositions
+}: {
+  clients: Client[];
+  platforms: Platform[];
+  openPositions?: number;
+}) {
   const scopedStats = statDefinitions.map((stat) => {
     if (stat.label === "Total Clients") {
       return { ...stat, value: String(clients.length || platforms.reduce((sum, p) => sum + p.clients, 0)) };
+    }
+
+    if (stat.label === "Total AUM") {
+      return { ...stat, value: formatCompactMoney(platforms.reduce((sum, platform) => sum + parseMoney(platform.aum), 0)) };
+    }
+
+    if (stat.label === "Open Positions" && typeof openPositions === "number") {
+      return { ...stat, value: openPositions.toLocaleString() };
+    }
+
+    if (stat.label === "Today's Volume") {
+      return { ...stat, value: formatCompactMoney(platforms.reduce((sum, platform) => sum + parseMoney(platform.volume), 0)) };
     }
 
     return stat;
@@ -84,4 +104,15 @@ export function StatsGrid({ clients, platforms }: { clients: Client[]; platforms
       ))}
     </section>
   );
+}
+
+function parseMoney(value: string) {
+  const multiplier = value.includes("M") ? 1_000_000 : value.includes("K") ? 1_000 : 1;
+  return Number(value.replace(/[$,MK]/g, "")) * multiplier || 0;
+}
+
+function formatCompactMoney(value: number) {
+  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000) return `$${Math.round(value / 1000)}K`;
+  return `$${Math.round(value).toLocaleString()}`;
 }

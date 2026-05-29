@@ -3,8 +3,9 @@
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { volumeData } from "../data";
+import type { VolumePoint } from "../types";
 
-export function VolumeChart() {
+export function VolumeChart({ data = volumeData }: { data?: VolumePoint[] }) {
   return (
     <Card>
       <CardHeader>
@@ -15,7 +16,7 @@ export function VolumeChart() {
       </CardHeader>
       <CardContent className="h-72">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={volumeData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+          <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
             <defs>
               <linearGradient id="volume" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#00d4ff" stopOpacity={0.25} />

@@ -1,7 +1,17 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { AlertTriangle, BadgeCheck, CircleDollarSign, RefreshCcw, UserPlus, WalletCards } from "lucide-react";
+import {
+  AlertTriangle,
+  BadgeCheck,
+  Bell,
+  CircleDollarSign,
+  RefreshCcw,
+  TrendingUp,
+  UserCheck,
+  UserPlus,
+  WalletCards
+} from "lucide-react";
 import type { ActivityEvent, Platform } from "../types";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -11,7 +21,10 @@ const icons = {
   withdrawal: WalletCards,
   kyc: BadgeCheck,
   risk: AlertTriangle,
-  sync: RefreshCcw
+  sync: RefreshCcw,
+  trade: TrendingUp,
+  client: UserCheck,
+  notification: Bell
 };
 
 export function ActivityFeed({

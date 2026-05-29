@@ -13,3 +13,7 @@ export const createBrokerConnectionSchema = z.object({
 export const triggerBrokerSyncSchema = z.object({
   types: z.array(z.nativeEnum(BrokerSyncType)).min(1).optional()
 });
+
+export const brokerConnectionActionSchema = z.object({
+  action: z.enum(["enable", "disable", "reconnect", "simulate_outage", "clear_outage"])
+});

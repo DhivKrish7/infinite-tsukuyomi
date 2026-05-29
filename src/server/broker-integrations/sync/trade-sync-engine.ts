@@ -2,6 +2,7 @@ import { BrokerSyncStatus, BrokerSyncType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import type { BrokerAdapter } from "../core/adapter";
 import type { BrokerConnectionContext } from "../core/domain";
+import { brokerEventBus } from "../core/events";
 import { completeSyncRun, startSyncRun } from "./sync-run-recorder";
 
 export class TradeSyncEngine {
@@ -15,7 +16,7 @@ export class TradeSyncEngine {
     });
 
     try {
-      const page = await adapter.fetchTrades(context, cursorBefore);
+      const page = await adapter.syncTrades(context, cursorBefore);
       let upserted = 0;
 
       for (const trade of page.items) {
@@ -59,6 +60,20 @@ export class TradeSyncEngine {
             openedAt: new Date(trade.openedAt),
             closedAt: trade.closedAt ? new Date(trade.closedAt) : undefined
           }
+        });
+
+        await brokerEventBus.publish({
+          type: trade.closedAt ? "trade.closed" : "trade.opened",
+          tenantId: context.tenantId,
+          connectionId: context.connectionId,
+          platformId: context.platformId,
+          broker: adapter.displayName,
+          login: trade.accountLogin,
+          symbol: trade.symbol,
+          side: trade.side,
+          volume: trade.volume,
+          pnl: trade.pnl,
+          timestamp: trade.closedAt ?? trade.openedAt
         });
 
         upserted += 1;

@@ -12,6 +12,10 @@ export class BrokerAdapterRegistry {
     this.adapters.set(adapter.key, adapter);
   }
 
+  has(adapterKey: string) {
+    return this.adapters.has(adapterKey);
+  }
+
   get(adapterKey: string) {
     const adapter = this.adapters.get(adapterKey);
     if (!adapter) throw new BrokerAdapterNotFoundError(adapterKey);
@@ -19,13 +23,17 @@ export class BrokerAdapterRegistry {
   }
 
   list() {
-    return Array.from(this.adapters.values()).map(({ key, displayName, vendor, version, capabilities }) => ({
-      key,
-      displayName,
-      vendor,
-      version,
-      capabilities
-    }));
+    return Array.from(this.adapters.values()).map(
+      ({ key, displayName, vendor, version, platformFamily, capabilities, productionReady }) => ({
+        key,
+        displayName,
+        vendor,
+        version,
+        platformFamily,
+        productionReady: Boolean(productionReady),
+        capabilities
+      })
+    );
   }
 }
 

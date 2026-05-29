@@ -1,6 +1,12 @@
 import type { BrokerRealtimeEvent } from "./domain";
 import { brokerEventBus } from "./events";
 
+export type BrokerWebSocketLike = {
+  readyState?: number;
+  send: (payload: string) => void | Promise<void>;
+  close?: () => void | Promise<void>;
+};
+
 export type BrokerWebSocketClient = {
   id: string;
   tenantId: string;
@@ -29,10 +35,23 @@ export class BrokerRealtimeGateway {
     };
   }
 
+  registerSocket(input: { id: string; tenantId: string; socket: BrokerWebSocketLike }) {
+    return this.registerClient({
+      id: input.id,
+      tenantId: input.tenantId,
+      send: (event) => input.socket.send(JSON.stringify(event)),
+      close: input.socket.close ? () => input.socket.close?.() : undefined
+    });
+  }
+
+  async emit(event: BrokerRealtimeEvent) {
+    await brokerEventBus.publish(event);
+  }
+
   async broadcast(event: BrokerRealtimeEvent) {
     await Promise.all(
       Array.from(this.clients.values())
-        .filter((client) => client.tenantId)
+        .filter((client) => !event.tenantId || client.tenantId === event.tenantId)
         .map((client) => client.send(event))
     );
   }

@@ -1,6 +1,8 @@
 export const ROLE = {
   SUPER_ADMIN: "SUPER_ADMIN",
   ADMIN: "ADMIN",
+  MANAGER: "MANAGER",
+  SUPPORT: "SUPPORT",
   STAFF: "STAFF",
   COMPLIANCE_OFFICER: "COMPLIANCE_OFFICER",
   FINANCE_MANAGER: "FINANCE_MANAGER",
@@ -55,6 +57,26 @@ export const routeRolePolicy: Record<string, string[]> = {
   "/settings": [ROLE.SUPER_ADMIN, ROLE.ADMIN],
   "/audit-logs": [ROLE.SUPER_ADMIN, ROLE.ADMIN, ROLE.AUDITOR],
   "/kyc": [ROLE.SUPER_ADMIN, ROLE.ADMIN, ROLE.COMPLIANCE_OFFICER],
-  "/finance": [ROLE.SUPER_ADMIN, ROLE.ADMIN, ROLE.FINANCE_MANAGER],
+  "/finance": [ROLE.SUPER_ADMIN, ROLE.ADMIN, ROLE.MANAGER, ROLE.FINANCE_MANAGER],
   "/risk": [ROLE.SUPER_ADMIN, ROLE.ADMIN, ROLE.RISK_ANALYST]
 };
+
+export const routePermissionPolicy = [
+  { prefix: "/api/analytics", permissions: [PERMISSION.ANALYTICS_READ] },
+  { prefix: "/api/compliance", permissions: [PERMISSION.KYC_REVIEW] },
+  { prefix: "/api/finance/transactions", permissions: [PERMISSION.FINANCE_READ, PERMISSION.WITHDRAWALS_APPROVE] },
+  { prefix: "/api/finance", permissions: [PERMISSION.FINANCE_READ] },
+  { prefix: "/api/integrations/brokers", permissions: [PERMISSION.PLATFORMS_MANAGE] },
+  { prefix: "/api/crm/leads", permissions: [PERMISSION.LEADS_READ, PERMISSION.LEADS_WRITE] },
+  { prefix: "/api/crm/clients", permissions: [PERMISSION.CLIENTS_READ, PERMISSION.CLIENTS_WRITE] },
+  { prefix: "/api/crm", permissions: [PERMISSION.CLIENTS_READ, PERMISSION.LEADS_READ] },
+  { prefix: "/analytics", permissions: [PERMISSION.ANALYTICS_READ] },
+  { prefix: "/clients", permissions: [PERMISSION.CLIENTS_READ] },
+  { prefix: "/leads", permissions: [PERMISSION.LEADS_READ] },
+  { prefix: "/onboarding", permissions: [PERMISSION.LEADS_READ, PERMISSION.CLIENTS_READ] },
+  { prefix: "/kyc", permissions: [PERMISSION.KYC_REVIEW] },
+  { prefix: "/finance/approvals", permissions: [PERMISSION.WITHDRAWALS_APPROVE] },
+  { prefix: "/finance/withdrawals", permissions: [PERMISSION.WITHDRAWALS_APPROVE] },
+  { prefix: "/finance", permissions: [PERMISSION.FINANCE_READ] },
+  { prefix: "/platforms", permissions: [PERMISSION.PLATFORMS_MANAGE] }
+] satisfies Array<{ prefix: string; permissions: PermissionKey[] }>;

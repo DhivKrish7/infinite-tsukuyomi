@@ -20,6 +20,7 @@ export function ClientsTable({ clients, platforms }: { clients: Client[]; platfo
               <th className="px-5 py-3 font-medium">Platform</th>
               <th className="px-5 py-3 font-medium">Balance</th>
               <th className="px-5 py-3 font-medium">PnL</th>
+              <th className="px-5 py-3 font-medium">Presence</th>
               <th className="px-5 py-3 font-medium">KYC</th>
               <th className="px-5 py-3 font-medium">Risk</th>
             </tr>
@@ -69,6 +70,11 @@ export function ClientsTable({ clients, platforms }: { clients: Client[]; platfo
                     )}
                   >
                     {client.pnl}
+                  </td>
+                  <td className="px-5 py-3">
+                    <Badge variant={client.presence === "online" ? "success" : "muted"}>
+                      {client.presence ?? "offline"}
+                    </Badge>
                   </td>
                   <td className="px-5 py-3">
                     <Badge

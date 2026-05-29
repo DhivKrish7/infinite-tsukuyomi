@@ -39,7 +39,7 @@ export const demoLeads: LeadRecord[] = [
     email: "james@email.com",
     phone: "+234 801 234 5678",
     country: "Nigeria",
-    source: "NebulFX Landing",
+    source: "NebulaFX Landing",
     campaign: "Gold Webinar",
     status: "QUALIFIED",
     onboardingStage: "APPLICATION_STARTED",

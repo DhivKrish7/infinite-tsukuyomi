@@ -1,10 +1,13 @@
 import type { BrokerSyncType } from "@prisma/client";
 
 export type BrokerCapability =
+  | "connection.lifecycle"
   | "accounts.sync"
   | "trades.sync"
   | "transactions.sync"
   | "balances.realtime"
+  | "prices.realtime"
+  | "sandbox.controls"
   | "health.check";
 
 export type BrokerConnectionContext = {
@@ -25,6 +28,13 @@ export type BrokerPage<T> = {
 export type BrokerHealth = {
   ok: boolean;
   latencyMs?: number;
+  message?: string;
+};
+
+export type BrokerConnectionSession = {
+  connected: boolean;
+  sessionId?: string;
+  connectedAt: string;
   message?: string;
 };
 
@@ -71,13 +81,61 @@ export type BrokerTransactionSnapshot = {
 
 export type BrokerRealtimeBalanceEvent = {
   type: "balance.updated";
+  tenantId?: string;
   connectionId: string;
   platformId: string;
   account: BrokerAccountSnapshot;
 };
 
-export type BrokerRealtimeEvent = BrokerRealtimeBalanceEvent;
+export type BrokerRealtimePriceEvent = {
+  type: "price.tick";
+  tenantId?: string;
+  connectionId: string;
+  platformId: string;
+  broker: string;
+  symbol: string;
+  bid: string;
+  ask: string;
+  spread: string;
+  timestamp: string;
+};
+
+export type BrokerRealtimeTradeEvent = {
+  type: "trade.opened" | "trade.closed";
+  tenantId?: string;
+  connectionId: string;
+  platformId: string;
+  broker: string;
+  login: string;
+  symbol: string;
+  side: "BUY" | "SELL";
+  volume: string;
+  pnl: string;
+  timestamp: string;
+};
+
+export type BrokerRealtimeNotificationEvent = {
+  type: "notification.created";
+  tenantId?: string;
+  connectionId?: string;
+  platformId?: string;
+  severity: "info" | "warning" | "critical" | "success";
+  title: string;
+  message: string;
+  timestamp: string;
+};
+
+export type BrokerRealtimeEvent =
+  | BrokerRealtimeBalanceEvent
+  | BrokerRealtimePriceEvent
+  | BrokerRealtimeTradeEvent
+  | BrokerRealtimeNotificationEvent;
 
 export type BrokerBalanceSubscription = {
+  unsubscribe: () => Promise<void> | void;
+};
+
+export type BrokerPriceSubscription = {
+  symbols: string[];
   unsubscribe: () => Promise<void> | void;
 };
