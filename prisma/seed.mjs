@@ -15,7 +15,13 @@ const permissions = [
   "users.manage",
   "audit.read",
   "risk.manage",
-  "analytics.read"
+  "analytics.read",
+  "management.read",
+  "management.write",
+  "brands.manage",
+  "desks.manage",
+  "permission_groups.manage",
+  "admin_change_logs.read"
 ];
 
 const roles = {
@@ -27,7 +33,9 @@ const roles = {
     "finance.read",
     "withdrawals.approve",
     "analytics.read",
-    "audit.read"
+    "audit.read",
+    "management.read",
+    "admin_change_logs.read"
   ],
   SUPPORT: ["clients.read", "clients.write", "leads.read", "leads.write", "analytics.read"],
   STAFF: ["clients.read", "leads.read", "analytics.read"],
@@ -37,7 +45,7 @@ const roles = {
   RETENTION_AGENT: ["clients.read", "clients.write"],
   IB_MANAGER: ["clients.read", "finance.read", "analytics.read"],
   RISK_ANALYST: ["clients.read", "risk.manage", "audit.read"],
-  AUDITOR: ["clients.read", "audit.read", "analytics.read"]
+  AUDITOR: ["clients.read", "audit.read", "analytics.read", "admin_change_logs.read"]
 };
 
 const now = new Date();
@@ -292,6 +300,7 @@ async function main() {
     demoUserRows.set(demoUser.role, user);
   }
 
+  await seedExpansionFoundation(tenant.id, demoUserRows);
   await seedSandboxDemoData(tenant.id, demoUserRows);
 
   console.log("Seeded default tenant and demo users:");
@@ -299,6 +308,125 @@ async function main() {
     console.log(`- ${demoUser.role}: ${demoUser.email}`);
   }
   console.log("Seeded sandbox brokerage simulation: clients, brokers, accounts, trades, funding, activity logs, and notifications.");
+}
+
+async function seedExpansionFoundation(tenantId, demoUserRows) {
+  const admin = demoUserRows.get("ADMIN");
+
+  const brand = await prisma.brand.upsert({
+    where: {
+      tenantId_slug: {
+        tenantId,
+        slug: "default"
+      }
+    },
+    update: {
+      name: "Default Brand",
+      status: "ACTIVE",
+      createdById: admin?.id,
+      settings: { source: "seed", protected: true }
+    },
+    create: {
+      tenantId,
+      createdById: admin?.id,
+      name: "Default Brand",
+      slug: "default",
+      status: "ACTIVE",
+      settings: { source: "seed", protected: true }
+    }
+  });
+
+  const desk = await prisma.desk.upsert({
+    where: {
+      tenantId_slug: {
+        tenantId,
+        slug: "default-sales"
+      }
+    },
+    update: {
+      brandId: brand.id,
+      name: "Default Sales Desk",
+      status: "ACTIVE",
+      createdById: admin?.id,
+      settings: { source: "seed", protected: true }
+    },
+    create: {
+      tenantId,
+      brandId: brand.id,
+      createdById: admin?.id,
+      name: "Default Sales Desk",
+      slug: "default-sales",
+      status: "ACTIVE",
+      settings: { source: "seed", protected: true }
+    }
+  });
+
+  const permissionGroup = await prisma.permissionGroup.upsert({
+    where: {
+      tenantId_slug: {
+        tenantId,
+        slug: "default-admin"
+      }
+    },
+    update: {
+      brandId: brand.id,
+      deskId: desk.id,
+      name: "Default Admin Group",
+      status: "ACTIVE",
+      createdById: admin?.id,
+      permissions,
+      settings: { source: "seed", protected: true }
+    },
+    create: {
+      tenantId,
+      brandId: brand.id,
+      deskId: desk.id,
+      createdById: admin?.id,
+      name: "Default Admin Group",
+      slug: "default-admin",
+      description: "Seeded expansion foundation permission group.",
+      status: "ACTIVE",
+      permissions,
+      settings: { source: "seed", protected: true }
+    }
+  });
+
+  await prisma.adminChangeLog.upsert({
+    where: { id: "seed-expansion-foundation" },
+    update: {
+      tenantId,
+      actorId: admin?.id,
+      brandId: brand.id,
+      deskId: desk.id,
+      permissionGroupId: permissionGroup.id,
+      action: "SEED_EXPANSION_FOUNDATION",
+      entity: "ExpansionFoundation",
+      entityId: tenantId,
+      after: {
+        brandId: brand.id,
+        deskId: desk.id,
+        permissionGroupId: permissionGroup.id
+      },
+      metadata: { source: "seed" }
+    },
+    create: {
+      id: "seed-expansion-foundation",
+      tenantId,
+      actorId: admin?.id,
+      brandId: brand.id,
+      deskId: desk.id,
+      permissionGroupId: permissionGroup.id,
+      action: "SEED_EXPANSION_FOUNDATION",
+      entity: "ExpansionFoundation",
+      entityId: tenantId,
+      after: {
+        brandId: brand.id,
+        deskId: desk.id,
+        permissionGroupId: permissionGroup.id
+      },
+      metadata: { source: "seed" }
+    }
+  });
 }
 
 async function seedSandboxDemoData(tenantId, demoUserRows) {

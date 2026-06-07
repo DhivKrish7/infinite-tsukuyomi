@@ -239,6 +239,34 @@ enum BrokerSyncStatus {
   PARTIAL
 }
 
+enum ApiKeyStatus {
+  ACTIVE
+  DISABLED
+  REVOKED
+}
+
+enum IpRestrictionMode {
+  ALLOW
+  DENY
+}
+
+enum CrmExtensionTarget {
+  CLIENT
+  LEAD
+  TASK
+  GLOBAL
+}
+
+enum CrmCustomFieldType {
+  TEXT
+  NUMBER
+  DATE
+  BOOLEAN
+  SELECT
+  MULTI_SELECT
+  URL
+}
+
 model Tenant {
   id        String   @id @default(uuid())
   name      String
@@ -267,6 +295,18 @@ model Tenant {
   screeningProviders ScreeningProviderConnection[]
   complianceNotes    ComplianceNote[]
   complianceAuditEvents ComplianceAuditEvent[]
+  brands             Brand[]
+  desks              Desk[]
+  permissionGroups   PermissionGroup[]
+  adminChangeLogs    AdminChangeLog[]
+  apiKeys            ApiKey[]
+  ipRestrictions     IpRestriction[]
+  crmExtensionModules CrmExtensionModule[]
+  crmSavedFilters    CrmSavedFilter[]
+  crmSavedViews      CrmSavedView[]
+  crmColumnPreferences CrmColumnPreference[]
+  crmCustomFields    CrmCustomField[]
+  crmCustomFieldValues CrmCustomFieldValue[]
 }
 
 model User {
@@ -303,6 +343,17 @@ model User {
   complianceReviews   ComplianceReview[]   @relation("ComplianceReviewReviewer")
   authoredComplianceNotes ComplianceNote[]  @relation("ComplianceNoteAuthor")
   complianceAuditEvents ComplianceAuditEvent[] @relation("ComplianceAuditActor")
+  createdBrands      Brand[]                @relation("BrandCreatedBy")
+  createdDesks       Desk[]                 @relation("DeskCreatedBy")
+  createdPermissionGroups PermissionGroup[] @relation("PermissionGroupCreatedBy")
+  adminChangeLogs    AdminChangeLog[]       @relation("AdminChangeLogActor")
+  apiKeys            ApiKey[]               @relation("ApiKeyOwner")
+  createdApiKeys     ApiKey[]               @relation("ApiKeyCreatedBy")
+  ipRestrictions     IpRestriction[]        @relation("IpRestrictionUser")
+  createdIpRestrictions IpRestriction[]     @relation("IpRestrictionCreatedBy")
+  crmSavedFilters    CrmSavedFilter[]       @relation("CrmSavedFilterOwner")
+  crmSavedViews      CrmSavedView[]         @relation("CrmSavedViewOwner")
+  crmColumnPreferences CrmColumnPreference[] @relation("CrmColumnPreferenceOwner")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -1085,4 +1136,285 @@ model AuditLog {
 
   @@index([tenantId, createdAt])
   @@index([entity, entityId])
+}
+
+model Brand {
+  id          String   @id @default(uuid())
+  tenantId    String?
+  createdById String?
+  name        String
+  slug        String
+  status      String   @default("ACTIVE")
+  logoUrl     String?
+  settings    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant           Tenant?           @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  createdBy        User?             @relation("BrandCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  desks            Desk[]
+  permissionGroups PermissionGroup[]
+  adminChangeLogs  AdminChangeLog[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, status])
+  @@index([createdById])
+}
+
+model Desk {
+  id          String   @id @default(uuid())
+  tenantId    String?
+  brandId     String?
+  createdById String?
+  name        String
+  slug        String
+  status      String   @default("ACTIVE")
+  settings    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant           Tenant?           @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  brand            Brand?            @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  createdBy        User?             @relation("DeskCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  permissionGroups PermissionGroup[]
+  adminChangeLogs  AdminChangeLog[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, status])
+  @@index([brandId])
+  @@index([createdById])
+}
+
+model PermissionGroup {
+  id          String   @id @default(uuid())
+  tenantId    String?
+  brandId     String?
+  deskId      String?
+  createdById String?
+  name        String
+  slug        String
+  description String?
+  status      String   @default("ACTIVE")
+  permissions Json?
+  settings    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant          Tenant?          @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  brand           Brand?           @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  desk            Desk?            @relation(fields: [deskId], references: [id], onDelete: SetNull)
+  createdBy       User?            @relation("PermissionGroupCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  adminChangeLogs AdminChangeLog[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, status])
+  @@index([brandId])
+  @@index([deskId])
+  @@index([createdById])
+}
+
+model AdminChangeLog {
+  id                String   @id @default(uuid())
+  tenantId          String?
+  actorId           String?
+  brandId           String?
+  deskId            String?
+  permissionGroupId String?
+  action            String
+  entity            String
+  entityId          String?
+  before            Json?
+  after             Json?
+  metadata          Json?
+  ipAddress         String?
+  createdAt         DateTime @default(now())
+
+  tenant          Tenant?          @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  actor           User?            @relation("AdminChangeLogActor", fields: [actorId], references: [id], onDelete: SetNull)
+  brand           Brand?           @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  desk            Desk?            @relation(fields: [deskId], references: [id], onDelete: SetNull)
+  permissionGroup PermissionGroup? @relation(fields: [permissionGroupId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, createdAt])
+  @@index([actorId, createdAt])
+  @@index([brandId, createdAt])
+  @@index([deskId, createdAt])
+  @@index([permissionGroupId, createdAt])
+  @@index([entity, entityId])
+}
+
+model ApiKey {
+  id             String       @id @default(uuid())
+  tenantId       String
+  userId         String
+  createdById    String?
+  name           String
+  keyPrefix      String
+  keyHash        String       @unique
+  scopes         Json?
+  status         ApiKeyStatus @default(ACTIVE)
+  lastUsedAt     DateTime?
+  lastUsedIp     String?
+  expiresAt      DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      User   @relation("ApiKeyOwner", fields: [userId], references: [id], onDelete: Cascade)
+  createdBy User?  @relation("ApiKeyCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status])
+  @@index([userId, status])
+  @@index([createdById])
+}
+
+model IpRestriction {
+  id          String            @id @default(uuid())
+  tenantId    String
+  userId      String?
+  createdById String?
+  label       String
+  cidr        String
+  mode        IpRestrictionMode @default(ALLOW)
+  status      String            @default("ACTIVE")
+  notes       String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      User?  @relation("IpRestrictionUser", fields: [userId], references: [id], onDelete: Cascade)
+  createdBy User?  @relation("IpRestrictionCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, cidr, userId, mode])
+  @@index([tenantId, status])
+  @@index([userId])
+  @@index([createdById])
+}
+
+model CrmExtensionModule {
+  id          String   @id @default(uuid())
+  tenantId    String
+  key         String
+  name        String
+  description String?
+  isEnabled   Boolean  @default(false)
+  settings    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, key])
+  @@index([tenantId, isEnabled])
+}
+
+model CrmSavedFilter {
+  id          String             @id @default(uuid())
+  tenantId    String
+  ownerId     String
+  moduleKey   String
+  target      CrmExtensionTarget
+  name        String
+  criteria    Json
+  isShared    Boolean            @default(false)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  owner  User   @relation("CrmSavedFilterOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  views  CrmSavedView[]
+
+  @@unique([tenantId, ownerId, target, name])
+  @@index([tenantId, target, isShared])
+  @@index([ownerId])
+}
+
+model CrmSavedView {
+  id          String             @id @default(uuid())
+  tenantId    String
+  ownerId     String
+  filterId    String?
+  moduleKey   String
+  target      CrmExtensionTarget
+  name        String
+  columns     Json?
+  sort        Json?
+  layout      Json?
+  isDefault   Boolean            @default(false)
+  isShared    Boolean            @default(false)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  tenant Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  owner  User            @relation("CrmSavedViewOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  filter CrmSavedFilter? @relation(fields: [filterId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, ownerId, target, name])
+  @@index([tenantId, target, isShared])
+  @@index([ownerId])
+  @@index([filterId])
+}
+
+model CrmColumnPreference {
+  id          String             @id @default(uuid())
+  tenantId    String
+  ownerId     String
+  moduleKey   String
+  target      CrmExtensionTarget
+  columnKey   String
+  label       String
+  visible     Boolean            @default(true)
+  order       Int                @default(0)
+  width       Int?
+  pinned      Boolean            @default(false)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  owner  User   @relation("CrmColumnPreferenceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, ownerId, target, columnKey])
+  @@index([tenantId, target])
+  @@index([ownerId])
+}
+
+model CrmCustomField {
+  id            String             @id @default(uuid())
+  tenantId      String
+  moduleKey     String
+  target        CrmExtensionTarget
+  key           String
+  label         String
+  type          CrmCustomFieldType
+  required      Boolean            @default(false)
+  options       Json?
+  defaultValue  Json?
+  active        Boolean            @default(true)
+  order         Int                @default(0)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  tenant Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  values CrmCustomFieldValue[]
+
+  @@unique([tenantId, target, key])
+  @@index([tenantId, target, active])
+}
+
+model CrmCustomFieldValue {
+  id            String             @id @default(uuid())
+  tenantId      String
+  customFieldId String
+  target        CrmExtensionTarget
+  entityId      String
+  value         Json
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  tenant      Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customField CrmCustomField @relation(fields: [customFieldId], references: [id], onDelete: Cascade)
+
+  @@unique([customFieldId, entityId])
+  @@index([tenantId, target, entityId])
 }

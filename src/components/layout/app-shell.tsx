@@ -17,6 +17,7 @@ import {
   Scale,
   Search,
   ShieldCheck,
+  SlidersHorizontal,
   UserCheck,
   UserPlus,
   Users,
@@ -73,6 +74,12 @@ const navSections: NavSection[] = [
         icon: Activity,
         href: "/onboarding",
         permissions: [PERMISSION.LEADS_READ, PERMISSION.CLIENTS_READ]
+      },
+      {
+        label: "CRM Extensions",
+        icon: SlidersHorizontal,
+        href: "/crm/extensions",
+        permissions: [PERMISSION.CLIENTS_READ, PERMISSION.LEADS_READ]
       },
       { label: "KYC Queue", icon: ShieldCheck, href: "/kyc", badge: "11", permissions: [PERMISSION.KYC_REVIEW] },
       { label: "KYC Reviews", icon: UserCheck, href: "/kyc/reviews", permissions: [PERMISSION.KYC_REVIEW] },

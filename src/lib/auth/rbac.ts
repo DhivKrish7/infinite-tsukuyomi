@@ -27,7 +27,13 @@ export const PERMISSION = {
   USERS_MANAGE: "users.manage",
   AUDIT_READ: "audit.read",
   RISK_MANAGE: "risk.manage",
-  ANALYTICS_READ: "analytics.read"
+  ANALYTICS_READ: "analytics.read",
+  MANAGEMENT_READ: "management.read",
+  MANAGEMENT_WRITE: "management.write",
+  BRANDS_MANAGE: "brands.manage",
+  DESKS_MANAGE: "desks.manage",
+  PERMISSION_GROUPS_MANAGE: "permission_groups.manage",
+  ADMIN_CHANGE_LOGS_READ: "admin_change_logs.read"
 } as const;
 
 export type PermissionKey = (typeof PERMISSION)[keyof typeof PERMISSION];
@@ -54,6 +60,7 @@ export function hasPermission(subject: AuthzSubject | null | undefined, permissi
 
 export const routeRolePolicy: Record<string, string[]> = {
   "/admin": [ROLE.SUPER_ADMIN, ROLE.ADMIN],
+  "/management": [ROLE.SUPER_ADMIN, ROLE.ADMIN, ROLE.MANAGER],
   "/settings": [ROLE.SUPER_ADMIN, ROLE.ADMIN],
   "/audit-logs": [ROLE.SUPER_ADMIN, ROLE.ADMIN, ROLE.AUDITOR],
   "/kyc": [ROLE.SUPER_ADMIN, ROLE.ADMIN, ROLE.COMPLIANCE_OFFICER],
@@ -62,6 +69,13 @@ export const routeRolePolicy: Record<string, string[]> = {
 };
 
 export const routePermissionPolicy = [
+  { prefix: "/api/management/users", permissions: [PERMISSION.USERS_MANAGE] },
+  { prefix: "/api/management/api-keys", permissions: [PERMISSION.USERS_MANAGE] },
+  { prefix: "/api/management/ip-restrictions", permissions: [PERMISSION.USERS_MANAGE] },
+  { prefix: "/api/management/brands", permissions: [PERMISSION.BRANDS_MANAGE] },
+  { prefix: "/api/management/desks", permissions: [PERMISSION.DESKS_MANAGE] },
+  { prefix: "/api/management/permission-groups", permissions: [PERMISSION.PERMISSION_GROUPS_MANAGE] },
+  { prefix: "/api/management", permissions: [PERMISSION.MANAGEMENT_READ] },
   { prefix: "/api/analytics", permissions: [PERMISSION.ANALYTICS_READ] },
   { prefix: "/api/compliance", permissions: [PERMISSION.KYC_REVIEW] },
   { prefix: "/api/finance/transactions", permissions: [PERMISSION.FINANCE_READ, PERMISSION.WITHDRAWALS_APPROVE] },
@@ -71,6 +85,8 @@ export const routePermissionPolicy = [
   { prefix: "/api/crm/clients", permissions: [PERMISSION.CLIENTS_READ, PERMISSION.CLIENTS_WRITE] },
   { prefix: "/api/crm", permissions: [PERMISSION.CLIENTS_READ, PERMISSION.LEADS_READ] },
   { prefix: "/analytics", permissions: [PERMISSION.ANALYTICS_READ] },
+  { prefix: "/crm/extensions", permissions: [PERMISSION.CLIENTS_READ, PERMISSION.LEADS_READ] },
+  { prefix: "/management", permissions: [PERMISSION.MANAGEMENT_READ] },
   { prefix: "/clients", permissions: [PERMISSION.CLIENTS_READ] },
   { prefix: "/leads", permissions: [PERMISSION.LEADS_READ] },
   { prefix: "/onboarding", permissions: [PERMISSION.LEADS_READ, PERMISSION.CLIENTS_READ] },

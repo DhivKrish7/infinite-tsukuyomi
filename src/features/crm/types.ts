@@ -72,3 +72,64 @@ export type PaginatedResponse<T> = {
     pageCount: number;
   };
 };
+
+export type CrmExtensionModule = {
+  id: string;
+  key: "saved-filters" | "saved-views" | "editable-columns" | "custom-fields";
+  name: string;
+  description?: string | null;
+  isEnabled: boolean;
+  settings?: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CrmSavedFilter = {
+  id: string;
+  moduleKey: string;
+  target: string;
+  name: string;
+  criteria: Record<string, unknown>;
+  isShared: boolean;
+  updatedAt: string;
+  owner?: AssignedUser | null;
+};
+
+export type CrmSavedView = {
+  id: string;
+  moduleKey: string;
+  target: string;
+  name: string;
+  columns?: string[] | null;
+  sort?: Record<string, unknown> | null;
+  layout?: Record<string, unknown> | null;
+  isDefault: boolean;
+  isShared: boolean;
+  updatedAt: string;
+  owner?: AssignedUser | null;
+};
+
+export type CrmColumnPreference = {
+  id: string;
+  moduleKey: string;
+  target: string;
+  columnKey: string;
+  label: string;
+  visible: boolean;
+  order: number;
+  width?: number | null;
+  pinned: boolean;
+};
+
+export type CrmCustomField = {
+  id: string;
+  moduleKey: string;
+  target: string;
+  key: string;
+  label: string;
+  type: string;
+  required: boolean;
+  options?: string[] | null;
+  active: boolean;
+  order: number;
+};

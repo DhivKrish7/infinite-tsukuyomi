@@ -1,4 +1,14 @@
-import type { ClientRecord, LeadRecord, PaginatedResponse, TaskRecord } from "./types";
+import type {
+  ClientRecord,
+  CrmColumnPreference,
+  CrmCustomField,
+  CrmExtensionModule,
+  CrmSavedFilter,
+  CrmSavedView,
+  LeadRecord,
+  PaginatedResponse,
+  TaskRecord
+} from "./types";
 
 type ListFilters = {
   q?: string;
@@ -45,4 +55,24 @@ export function fetchLeads(filters: ListFilters) {
 
 export function fetchTasks(filters: ListFilters) {
   return fetchJson<PaginatedResponse<TaskRecord>>(`/api/crm/tasks${toQuery(filters)}`);
+}
+
+export function fetchCrmExtensions() {
+  return fetchJson<{ items: CrmExtensionModule[] }>("/api/crm/extensions");
+}
+
+export function fetchSavedFilters() {
+  return fetchJson<{ items: CrmSavedFilter[] }>("/api/crm/saved-filters");
+}
+
+export function fetchSavedViews() {
+  return fetchJson<{ items: CrmSavedView[] }>("/api/crm/saved-views");
+}
+
+export function fetchColumnPreferences() {
+  return fetchJson<{ items: CrmColumnPreference[] }>("/api/crm/columns");
+}
+
+export function fetchCustomFields() {
+  return fetchJson<{ items: CrmCustomField[] }>("/api/crm/custom-fields");
 }

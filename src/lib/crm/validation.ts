@@ -2,6 +2,8 @@ import {
   ClientStatus,
   CommunicationDirection,
   CommunicationType,
+  CrmCustomFieldType,
+  CrmExtensionTarget,
   LeadStatus,
   OnboardingStage,
   RiskLevel,
@@ -110,4 +112,66 @@ export const createTaskSchema = z.object({
 
 export const updateTaskSchema = createTaskSchema.partial().extend({
   completedAt: z.string().datetime().nullable().optional()
+});
+
+const moduleKeySchema = z.enum(["saved-filters", "saved-views", "editable-columns", "custom-fields"]);
+const jsonObjectSchema = z.record(z.unknown());
+
+export const crmExtensionModuleSchema = z.object({
+  isEnabled: z.boolean(),
+  settings: jsonObjectSchema.optional().nullable()
+});
+
+export const crmSavedFilterSchema = z.object({
+  moduleKey: z.literal("saved-filters").default("saved-filters"),
+  target: z.nativeEnum(CrmExtensionTarget),
+  name: z.string().trim().min(2).max(120),
+  criteria: jsonObjectSchema,
+  isShared: z.boolean().default(false)
+});
+
+export const crmSavedViewSchema = z.object({
+  moduleKey: z.literal("saved-views").default("saved-views"),
+  target: z.nativeEnum(CrmExtensionTarget),
+  filterId: z.string().uuid().optional().nullable(),
+  name: z.string().trim().min(2).max(120),
+  columns: z.array(z.string().min(1)).optional().nullable(),
+  sort: jsonObjectSchema.optional().nullable(),
+  layout: jsonObjectSchema.optional().nullable(),
+  isDefault: z.boolean().default(false),
+  isShared: z.boolean().default(false)
+});
+
+export const crmColumnPreferenceSchema = z.object({
+  moduleKey: z.literal("editable-columns").default("editable-columns"),
+  target: z.nativeEnum(CrmExtensionTarget),
+  columnKey: z.string().trim().min(1).max(80),
+  label: z.string().trim().min(1).max(120),
+  visible: z.boolean().default(true),
+  order: z.number().int().min(0).default(0),
+  width: z.number().int().min(80).max(600).optional().nullable(),
+  pinned: z.boolean().default(false)
+});
+
+export const crmCustomFieldSchema = z.object({
+  moduleKey: z.literal("custom-fields").default("custom-fields"),
+  target: z.nativeEnum(CrmExtensionTarget),
+  key: z
+    .string()
+    .trim()
+    .min(2)
+    .max(80)
+    .regex(/^[a-z][a-z0-9_]*$/),
+  label: z.string().trim().min(2).max(120),
+  type: z.nativeEnum(CrmCustomFieldType),
+  required: z.boolean().default(false),
+  options: z.array(z.string().min(1)).optional().nullable(),
+  defaultValue: z.unknown().optional().nullable(),
+  active: z.boolean().default(true),
+  order: z.number().int().min(0).default(0)
+});
+
+export const crmExtensionListSchema = z.object({
+  target: z.nativeEnum(CrmExtensionTarget).optional(),
+  moduleKey: moduleKeySchema.optional()
 });
