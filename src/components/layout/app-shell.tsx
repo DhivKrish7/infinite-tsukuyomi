@@ -8,8 +8,10 @@ import {
   BriefcaseBusiness,
   BadgeCheck,
   CircleDollarSign,
+  FileBarChart,
   FileText,
   History,
+  Megaphone,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -54,7 +56,9 @@ const navSections: NavSection[] = [
     label: "Overview",
     items: [
       { label: "Dashboard", icon: LayoutDashboard, href: "/" },
-      { label: "Analytics", icon: BarChart3, href: "/analytics", permissions: [PERMISSION.ANALYTICS_READ] }
+      { label: "Analytics", icon: BarChart3, href: "/analytics", permissions: [PERMISSION.ANALYTICS_READ] },
+      { label: "Reports", icon: FileBarChart, href: "/reports", permissions: [PERMISSION.ANALYTICS_READ] },
+      { label: "Marketing", icon: Megaphone, href: "/marketing", permissions: [PERMISSION.MARKETING_READ] }
     ]
   },
   {
@@ -98,6 +102,7 @@ const navSections: NavSection[] = [
         permissions: [PERMISSION.PLATFORMS_MANAGE]
       },
       { label: "Positions", icon: Activity, href: "/trading/positions", permissions: [PERMISSION.PLATFORMS_MANAGE] },
+      { label: "Exposure", icon: BarChart3, href: "/exposure", permissions: [PERMISSION.PLATFORMS_MANAGE] },
       { label: "Platforms", icon: PlugZap, href: "/platforms", permissions: [PERMISSION.PLATFORMS_MANAGE] }
     ]
   },

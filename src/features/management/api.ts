@@ -5,7 +5,6 @@ import type {
   DeskRecord,
   ManagementListResponse,
   ManagementOverview,
-  ManagementUserRecord,
   ManagementUsersResponse,
   IpRestrictionRecord,
   PermissionGroupRecord

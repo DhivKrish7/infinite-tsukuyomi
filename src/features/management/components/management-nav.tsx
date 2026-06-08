@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, Crown, KeyRound, LayoutGrid, Shield, Users, UsersRound } from "lucide-react";
+import { Building2, ClipboardList, Crown, KeyRound, LayoutGrid, Shield, Users, UsersRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
@@ -12,6 +12,7 @@ const items = [
   { label: "IP Whitelist", href: "/management/ip-whitelist", icon: Shield },
   { label: "Brands", href: "/management/brands", icon: Crown },
   { label: "Desks", href: "/management/desks", icon: Building2 },
+  { label: "Form Builders", href: "/management/forms", icon: ClipboardList },
   { label: "Permission Groups", href: "/management/permission-groups", icon: UsersRound }
 ];
 

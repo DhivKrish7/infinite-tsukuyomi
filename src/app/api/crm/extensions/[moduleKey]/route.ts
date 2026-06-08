@@ -10,7 +10,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   const auth = await requireCrmUser();
   if ("response" in auth) return auth.response;
 
-  const moduleDefinition = CRM_EXTENSION_MODULES.find((module) => module.key === (await params).moduleKey);
+  const { moduleKey } = await params;
+  const moduleDefinition = CRM_EXTENSION_MODULES.find((module) => module.key === moduleKey);
   if (!moduleDefinition) return NextResponse.json({ error: "Extension module not found" }, { status: 404 });
 
   const parsed = crmExtensionModuleSchema.safeParse(await request.json().catch(() => null));

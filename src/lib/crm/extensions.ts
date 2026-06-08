@@ -62,7 +62,7 @@ export async function ensureCrmExtensionModules(tenantId: string) {
 }
 
 export async function isCrmExtensionEnabled(tenantId: string, moduleKey: CrmExtensionModuleKey) {
-  const module = await prisma.crmExtensionModule.findUnique({
+  const extensionModule = await prisma.crmExtensionModule.findUnique({
     where: {
       tenantId_key: {
         tenantId,
@@ -71,5 +71,5 @@ export async function isCrmExtensionEnabled(tenantId: string, moduleKey: CrmExte
     }
   });
 
-  return Boolean(module?.isEnabled);
+  return Boolean(extensionModule?.isEnabled);
 }

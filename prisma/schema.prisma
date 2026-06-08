@@ -267,6 +267,88 @@ enum CrmCustomFieldType {
   URL
 }
 
+enum ReportType {
+  CUSTOMER
+  TRADE
+  TRANSACTION
+}
+
+enum ReportHistoryStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum ReportExportFormat {
+  CSV
+  XLSX
+  JSON
+  PDF
+}
+
+enum DynamicFormKind {
+  SIGNUP
+  QUESTIONNAIRE
+}
+
+enum DynamicFormStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum DynamicFormFieldType {
+  TEXT
+  EMAIL
+  PHONE
+  NUMBER
+  DATE
+  SELECT
+  MULTI_SELECT
+  RADIO
+  CHECKBOX
+  TEXTAREA
+  CONSENT
+  HIDDEN
+}
+
+enum MarketingCampaignStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+enum MarketingChannel {
+  SEARCH
+  SOCIAL
+  EMAIL
+  AFFILIATE
+  REFERRAL
+  DISPLAY
+  EVENT
+  ORGANIC
+}
+
+enum MarketingAttributionType {
+  FIRST_TOUCH
+  LAST_TOUCH
+  ASSISTED
+  CONVERSION
+}
+
+enum MarketingFunnelStage {
+  IMPRESSION
+  VISIT
+  LEAD
+  APPLICATION
+  KYC_SUBMITTED
+  FUNDED
+  ACTIVE_TRADER
+}
+
 model Tenant {
   id        String   @id @default(uuid())
   name      String
@@ -307,6 +389,13 @@ model Tenant {
   crmColumnPreferences CrmColumnPreference[]
   crmCustomFields    CrmCustomField[]
   crmCustomFieldValues CrmCustomFieldValue[]
+  reportDefinitions  ReportDefinition[]
+  reportHistory      ReportHistory[]
+  dynamicForms       DynamicForm[]
+  dynamicFormVersions DynamicFormVersion[]
+  marketingCampaigns MarketingCampaign[]
+  marketingAttributions MarketingAttribution[]
+  marketingFunnelEvents MarketingFunnelEvent[]
 }
 
 model User {
@@ -354,6 +443,8 @@ model User {
   crmSavedFilters    CrmSavedFilter[]       @relation("CrmSavedFilterOwner")
   crmSavedViews      CrmSavedView[]         @relation("CrmSavedViewOwner")
   crmColumnPreferences CrmColumnPreference[] @relation("CrmColumnPreferenceOwner")
+  reportDefinitions  ReportDefinition[]     @relation("ReportDefinitionCreatedBy")
+  reportHistory      ReportHistory[]        @relation("ReportHistoryRequestedBy")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -436,6 +527,8 @@ model Client {
   platformId      String?
   assignedToId    String?
   convertedLeadId String?
+  attributionCampaignId String?
+  initialAttributionId String?
   externalId      String?
   name            String
   email           String
@@ -455,6 +548,8 @@ model Client {
   platform       TradingPlatform?   @relation(fields: [platformId], references: [id])
   assignedTo     User?              @relation("ClientAssignedTo", fields: [assignedToId], references: [id])
   convertedLead  Lead?              @relation("ConvertedLead", fields: [convertedLeadId], references: [id])
+  attributionCampaign MarketingCampaign? @relation("ClientAttributionCampaign", fields: [attributionCampaignId], references: [id], onDelete: SetNull)
+  initialAttribution MarketingAttribution? @relation("ClientInitialAttribution", fields: [initialAttributionId], references: [id], onDelete: SetNull)
   accounts       TradingAccount[]
   transactions   Transaction[]
   wallets        Wallet[]
@@ -466,6 +561,7 @@ model Client {
   notes          ClientNote[]
   communications CommunicationLog[]
   tasks          TaskReminder[]
+  marketingAttributions MarketingAttribution[] @relation("MarketingAttributionClient")
 
   @@unique([tenantId, email])
   @@index([tenantId, status])
@@ -473,12 +569,16 @@ model Client {
   @@index([tenantId, kycStatus])
   @@index([platformId])
   @@index([assignedToId])
+  @@index([attributionCampaignId])
+  @@index([initialAttributionId])
 }
 
 model Lead {
   id              String          @id @default(uuid())
   tenantId        String
   assignedToId    String?
+  attributionCampaignId String?
+  initialAttributionId String?
   name            String
   email           String?
   phone           String?
@@ -496,16 +596,21 @@ model Lead {
 
   tenant          Tenant             @relation(fields: [tenantId], references: [id])
   assignedTo      User?              @relation("LeadAssignedTo", fields: [assignedToId], references: [id])
+  attributionCampaign MarketingCampaign? @relation("LeadAttributionCampaign", fields: [attributionCampaignId], references: [id], onDelete: SetNull)
+  initialAttribution MarketingAttribution? @relation("LeadInitialAttribution", fields: [initialAttributionId], references: [id], onDelete: SetNull)
   convertedClient Client[]           @relation("ConvertedLead")
   tags            LeadTag[]
   notes           LeadNote[]
   communications  CommunicationLog[]
   tasks           TaskReminder[]
+  marketingAttributions MarketingAttribution[] @relation("MarketingAttributionLead")
 
   @@index([tenantId, status])
   @@index([tenantId, onboardingStage])
   @@index([assignedToId])
   @@index([tenantId, email])
+  @@index([attributionCampaignId])
+  @@index([initialAttributionId])
 }
 
 model Tag {
@@ -1417,4 +1522,174 @@ model CrmCustomFieldValue {
 
   @@unique([customFieldId, entityId])
   @@index([tenantId, target, entityId])
+}
+
+model ReportDefinition {
+  id           String   @id @default(uuid())
+  tenantId     String
+  createdById  String?
+  key          String
+  name         String
+  type         ReportType
+  description  String?
+  columns      Json
+  filters      Json?
+  exportConfig Json?
+  isSystem     Boolean  @default(true)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant    Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy User?           @relation("ReportDefinitionCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  history   ReportHistory[]
+
+  @@unique([tenantId, key])
+  @@index([tenantId, type, isActive])
+  @@index([createdById])
+}
+
+model ReportHistory {
+  id             String              @id @default(uuid())
+  tenantId       String
+  definitionId   String?
+  requestedById  String?
+  type           ReportType
+  status         ReportHistoryStatus @default(COMPLETED)
+  exportFormat   ReportExportFormat?
+  parameters     Json?
+  rowCount        Int                 @default(0)
+  resultSnapshot  Json?
+  exportLocation String?
+  error          String?
+  startedAt      DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime            @default(now())
+
+  tenant      Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  definition  ReportDefinition? @relation(fields: [definitionId], references: [id], onDelete: SetNull)
+  requestedBy User?             @relation("ReportHistoryRequestedBy", fields: [requestedById], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, type, createdAt])
+  @@index([definitionId])
+  @@index([requestedById])
+}
+
+model DynamicForm {
+  id               String            @id @default(uuid())
+  tenantId         String
+  key              String
+  name             String
+  description      String?
+  kind             DynamicFormKind
+  status           DynamicFormStatus @default(DRAFT)
+  currentVersionId String?           @unique
+  settings         Json?
+  createdById      String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  tenant         Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  currentVersion DynamicFormVersion? @relation("CurrentDynamicFormVersion", fields: [currentVersionId], references: [id], onDelete: SetNull)
+  versions       DynamicFormVersion[] @relation("DynamicFormVersions")
+
+  @@unique([tenantId, key])
+  @@index([tenantId, kind, status])
+}
+
+model DynamicFormVersion {
+  id          String   @id @default(uuid())
+  tenantId    String
+  formId      String
+  version     Int
+  definition  Json
+  notes       String?
+  createdById String?
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  form           DynamicForm  @relation("DynamicFormVersions", fields: [formId], references: [id], onDelete: Cascade)
+  currentForForm DynamicForm? @relation("CurrentDynamicFormVersion")
+
+  @@unique([formId, version])
+  @@index([tenantId, formId, version])
+}
+
+model MarketingCampaign {
+  id               String                  @id @default(uuid())
+  tenantId         String
+  key              String
+  name             String
+  status           MarketingCampaignStatus @default(DRAFT)
+  channel          MarketingChannel
+  objective        String?
+  budget           Decimal                 @default(0) @db.Decimal(18, 2)
+  spend            Decimal                 @default(0) @db.Decimal(18, 2)
+  currency         String                  @default("USD")
+  attributionModel String                  @default("last_touch")
+  startsAt         DateTime?
+  endsAt           DateTime?
+  ownerId          String?
+  metadata         Json?
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+
+  tenant       Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  leads        Lead[]                    @relation("LeadAttributionCampaign")
+  clients      Client[]                  @relation("ClientAttributionCampaign")
+  attributions MarketingAttribution[]    @relation("CampaignAttributions")
+  funnelEvents MarketingFunnelEvent[]
+
+  @@unique([tenantId, key])
+  @@index([tenantId, status, channel])
+}
+
+model MarketingAttribution {
+  id              String                   @id @default(uuid())
+  tenantId        String
+  campaignId      String?
+  leadId          String?
+  clientId        String?
+  type            MarketingAttributionType
+  source          String
+  medium          String?
+  touchpoint      String
+  landingPage     String?
+  referrer        String?
+  conversionValue Decimal                  @default(0) @db.Decimal(18, 2)
+  occurredAt      DateTime                 @default(now())
+  metadata        Json?
+  createdAt       DateTime                 @default(now())
+
+  tenant           Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  campaign         MarketingCampaign? @relation("CampaignAttributions", fields: [campaignId], references: [id], onDelete: SetNull)
+  lead             Lead?              @relation("MarketingAttributionLead", fields: [leadId], references: [id], onDelete: SetNull)
+  client           Client?            @relation("MarketingAttributionClient", fields: [clientId], references: [id], onDelete: SetNull)
+  initialLeadFor   Lead[]             @relation("LeadInitialAttribution")
+  initialClientFor Client[]           @relation("ClientInitialAttribution")
+
+  @@index([tenantId, occurredAt])
+  @@index([campaignId, type])
+  @@index([leadId])
+  @@index([clientId])
+}
+
+model MarketingFunnelEvent {
+  id         String               @id @default(uuid())
+  tenantId   String
+  campaignId String?
+  stage      MarketingFunnelStage
+  count      Int                  @default(0)
+  value      Decimal              @default(0) @db.Decimal(18, 2)
+  periodStart DateTime
+  periodEnd   DateTime
+  metadata   Json?
+  createdAt  DateTime             @default(now())
+
+  tenant   Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  campaign MarketingCampaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, stage, periodStart])
+  @@index([campaignId, periodStart])
 }
